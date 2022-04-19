@@ -1,2 +1,1 @@
-GO111MODULE=off go run main.go
-node testing
+GOPATH=/Users/linusbolls/projects/supplit/supplit-server GO111MODULE=off go run src/main.go
