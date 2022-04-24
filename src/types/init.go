@@ -65,6 +65,10 @@ var DefaultNodeTypes = map[string]Node{
 			}
 			resultFloat := firstFloat * secondFloat
 
+			fmt.Println("result in bodynode:")
+			fmt.Println([]Primitive{Primitive(resultFloat)})
+			fmt.Println([]Primitive{Primitive(resultFloat)}[0])
+
 			return []Primitive{Primitive(resultFloat)}
 		},
 	},

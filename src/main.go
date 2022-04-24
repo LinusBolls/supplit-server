@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -40,58 +41,66 @@ func parseNodeMapSchema(w http.ResponseWriter, req *http.Request) {
 
 	fmt.Println("===")
 
-	sache, err := ioutil.ReadAll(req.Body)
+	sache, csvDecodeErr := ioutil.ReadAll(req.Body)
 
-	if err != nil {
-		panic(err)
+	if csvDecodeErr != nil {
+		panic(csvDecodeErr)
 	}
 	fmt.Println(string(sache))
 
 	fmt.Println("===")
 
-	ferr := json.Unmarshal(sache, &body)
+	jsonDecodeErr := json.Unmarshal(sache, &body)
 
-	if ferr != nil {
+	if jsonDecodeErr != nil {
 		fmt.Println("error decoding the json body")
-		http.Error(w, ferr.Error(), http.StatusBadRequest)
-
-		fmt.Println(ferr.Error())
+		http.Error(w, jsonDecodeErr.Error(), http.StatusBadRequest)
 		return
 	}
 	strReader := strings.NewReader(body.Csv)
 	csvReader := csv.NewReader(strReader)
-	data, err := csvReader.ReadAll()
+	data, csvDecodeErr := csvReader.ReadAll()
 
-	if err != nil {
+	if csvDecodeErr != nil {
 		fmt.Println("error decoding the csv body")
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, csvDecodeErr.Error(), http.StatusBadRequest)
 		return
 	}
-	headerRow := data[0]
+	// headerRow := data[0]
 	dataRows := data[1:]
 
 	var results [][]types.Primitive
 
-	results = append(results, toPrimitiveSlice(headerRow))
+	results = append(results, toPrimitiveSlice(body.Schema.Out.Columns))
 
-	for i := range dataRows {
+	for _, row := range dataRows {
 
-		results = append(results, compiler.ParseSache(types.DefaultNodeTypes, body.Schema, toPrimitiveSlice(dataRows[i])))
+		results = append(results, compiler.ParseSache(types.DefaultNodeTypes, body.Schema, toPrimitiveSlice(row)))
 	}
-	fmt.Println(results)
 
-	fmt.Fprintf(w, "lol")
+	csvbuffer := new(bytes.Buffer)
+	csvwriter := csv.NewWriter(csvbuffer)
+	csvEncodeErr := csvwriter.WriteAll(toStringSliceSlice(results))
+
+	fmt.Println(results)
+	fmt.Println(toStringSliceSlice(results))
+	fmt.Println(csvbuffer.String())
+
+	if csvEncodeErr != nil {
+		log.Fatal(csvEncodeErr)
+	}
+	fmt.Fprintf(w, csvbuffer.String())
 }
 
 func main() {
 
 	http.HandleFunc("/hello", hello)
 	http.HandleFunc("/headers", headers)
-	http.HandleFunc("/calc", parseNodeMapSchema)
+	http.HandleFunc("/calc", handleCors(parseNodeMapSchema))
 
 	fmt.Printf("Listening on http://localhost:%v/\n", PORT)
 
-	http.ListenAndServe(":" + strconv.Itoa(8090), nil)
+	http.ListenAndServe(":"+strconv.Itoa(8090), nil)
 }
 
 func GetTestCsv() string {
@@ -106,11 +115,61 @@ func GetTestCsv() string {
 
 func toPrimitiveSlice(data []string) []types.Primitive {
 
-	var sache []types.Primitive
+	var slice []types.Primitive
 
-	for i := range data {
+	for _, item := range data {
 
-		sache = append(sache, types.Primitive(data[i]))
+		slice = append(slice, types.Primitive(item))
 	}
-	return sache
+	return slice
+}
+func toStringSlice(data []types.Primitive) []string {
+	var slice []string
+
+	for _, item := range data {
+
+		str, strOk := item.(string)
+		float, floatOk := item.(float64)
+
+		if strOk {
+			slice = append(slice, str)
+
+		} else if floatOk {
+			slice = append(slice, fmt.Sprint(float))
+			// slice = append(slice, strconv.FormatFloat(float, 'E', -1, 64))
+
+		} else {
+
+		}
+	}
+	return slice
+}
+func toStringSliceSlice(data [][]types.Primitive) [][]string {
+	var slice [][]string
+
+	for _, item := range data {
+
+		slice = append(slice, toStringSlice(item))
+	}
+	return slice
+}
+
+func handleCors(h http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+
+		sache := w.Header()
+
+		sache.Set("Access-Control-Allow-Origin", req.Header.Get("Origin"))
+		sache.Set("Access-Control-Allow-Headers", "*")
+		sache.Set("Content-Type", "application/json")
+
+		if req.Method == "OPTIONS" {
+
+			fmt.Println("preflight")
+
+		} else {
+			fmt.Println("request einkommend")
+			h.ServeHTTP(w, req)
+		}
+	}
 }

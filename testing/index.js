@@ -28,7 +28,7 @@ const {
   promises: { readFile },
 } = require("fs");
 
-const Schema = {
+const schema = {
   in: { columns: ["price", "discount"] },
   out: { columns: ["newPrice"] },
   nodes: ["multiply"],
@@ -51,9 +51,11 @@ const Schema = {
 async function main() {
   const file = await readFile(join(__dirname, "./data.csv"));
 
+  console.log(file.toString());
+
   const dater = {
-    Csv: file.toString(),
-    Schema,
+    csv: file.toString(),
+    schema,
   };
 
   try {
@@ -61,7 +63,7 @@ async function main() {
 
     const res = await axios.post("http://localhost:8090/calc", dater);
 
-    console.log(res.data);
+    console.log(`res data:\n${res.data}`);
   } catch (err) {
     console.log("epic fail lmfao:", err);
   }
