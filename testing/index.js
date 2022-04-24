@@ -63,7 +63,7 @@ async function main() {
 
     const res = await axios.post("http://localhost:8090/calc", dater);
 
-    console.log(`res data:\n${res.data}`);
+    console.log(`res data:\n${JSON.stringify(res.data, null, 2)}`);
   } catch (err) {
     console.log("epic fail lmfao:", err);
   }

@@ -34,8 +34,12 @@ func headers(w http.ResponseWriter, req *http.Request) {
 func parseNodeMapSchema(w http.ResponseWriter, req *http.Request) {
 
 	type Body struct {
-		Csv    string
-		Schema types.NodeMapSchema
+		Csv    string              `json:"csv"`
+		Schema types.NodeMapSchema `json:"schema"`
+	}
+	type Response struct {
+		Csv    string               `json:"csv"`
+		Errors []types.NodeMapError `json:"errors"`
 	}
 	var body Body
 
@@ -82,14 +86,16 @@ func parseNodeMapSchema(w http.ResponseWriter, req *http.Request) {
 	csvwriter := csv.NewWriter(csvbuffer)
 	csvEncodeErr := csvwriter.WriteAll(toStringSliceSlice(results))
 
-	fmt.Println(results)
-	fmt.Println(toStringSliceSlice(results))
-	fmt.Println(csvbuffer.String())
-
 	if csvEncodeErr != nil {
 		log.Fatal(csvEncodeErr)
 	}
-	fmt.Fprintf(w, csvbuffer.String())
+
+	jsonBytes, jsonEncodeErr := json.Marshal(Response{Csv: csvbuffer.String(), Errors: []types.NodeMapError{}})
+
+	if jsonEncodeErr != nil {
+		panic(jsonEncodeErr)
+	}
+	fmt.Fprintf(w, string(jsonBytes))
 }
 
 func main() {

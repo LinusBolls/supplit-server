@@ -73,3 +73,17 @@ var DefaultNodeTypes = map[string]Node{
 		},
 	},
 }
+
+type NodeMapErrorSeverity struct {
+	Name string `json:"name"`
+	Desc string `json:"desc"`
+	Icon string `json:"icon"` // a font awesome class
+
+	PrimColor string `json:"primColor"` // a css color
+	SecColor  string `json:"secColor"`  //a css color
+}
+type NodeMapError struct {
+	Severity NodeMapErrorSeverity `json:"severity"`
+	Source   string               `json:"source"` // "Ok" | "Compiler" | "Schema" | "Input Csv" | "Output Csv";
+	Desc     string               `json:"desc"`
+}
